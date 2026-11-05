@@ -55,3 +55,8 @@ func (l *Limiter) generatedTokens(date time.Time) float64 {
 	return tokens
 }
 
+//t is the amount of tokens to be reserved
+func (l *Limiter) reserveN(t float64) float64 {
+	result := l.generatedTokens(time.Now()) - t
+	return result
+}
