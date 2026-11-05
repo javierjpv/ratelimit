@@ -1,6 +1,7 @@
 package ratelimiting
 
 import (
+	"errors"
 	"sync"
 	"time"
 )
@@ -59,4 +60,16 @@ func (l *Limiter) generatedTokens(date time.Time) float64 {
 func (l *Limiter) reserveN(t float64) float64 {
 	result := l.generatedTokens(time.Now()) - t
 	return result
+}
+
+//t is the amount of pending tokens to be re generated
+func (l *Limiter) timeTowait(t float64) (tim time.Duration, err error) {
+	if t <= 0 {
+		return 0, errors.New("it can not be 0 or minor")
+	}
+	durationF := t / float64(l.limit)
+
+	duration := (durationF * float64(time.Second))
+
+	return time.Duration(duration), nil
 }
