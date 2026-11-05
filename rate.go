@@ -1,6 +1,7 @@
 package ratelimiting
 
 import (
+	"context"
 	"errors"
 	"sync"
 	"time"
@@ -44,8 +45,6 @@ func (l *Limiter) Last() time.Time {
 	return l.last
 }
 
-
-
 // t is the amount of tokens to be consumed
 // calculates the elapsed time between last update on tokens field and the date to be compared
 // beware of context bleeding
@@ -56,13 +55,13 @@ func (l *Limiter) generatedTokens(date time.Time) float64 {
 	return tokens
 }
 
-//t is the amount of tokens to be reserved
+// t is the amount of tokens to be reserved
 func (l *Limiter) reserveN(t float64) float64 {
 	result := l.generatedTokens(time.Now()) - t
 	return result
 }
 
-//t is the amount of pending tokens to be re generated
+// t is the amount of pending tokens to be re generated
 func (l *Limiter) timeTowait(t float64) (tim time.Duration, err error) {
 	if t <= 0 {
 		return 0, errors.New("it can not be 0 or minor")
@@ -72,4 +71,27 @@ func (l *Limiter) timeTowait(t float64) (tim time.Duration, err error) {
 	duration := (durationF * float64(time.Second))
 
 	return time.Duration(duration), nil
+}
+
+func (l *Limiter) Wait(ctx context.Context) error {
+	err := l.wait(ctx, 1)
+	return err
+}
+
+// t is the number of consumed tokens
+func (l *Limiter) waitN(ctx context.Context, t tokens) error {
+	err := l.wait(ctx, t)
+	return err
+}
+
+// t is the amount of tokens to be consumed
+// sleep the go routine depending of the select condition
+func (l *Limiter) wait(ctx context.Context, t tokens) error {
+	select {
+	case <-ctx.Done():
+		return nil
+	//default allows the function to continue without unrecheable code
+	default:
+	}
+
 }
