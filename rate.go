@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+type tokens float64
+
 type Limiter struct {
 	mu     sync.Mutex
 	burst  int
@@ -13,8 +15,8 @@ type Limiter struct {
 	last   time.Time
 }
 
-func NewLimiter(b int, l float64) *Limiter {
-	return &Limiter{burst: b, limit: l, tokens: float64(b)}
+func NewLimiter(l float64, b int) *Limiter {
+	return &Limiter{limit: l, burst: b, tokens: float64(b)}
 }
 
 func (l *Limiter) Burst() int {
@@ -40,3 +42,16 @@ func (l *Limiter) Last() time.Time {
 	defer l.mu.Unlock()
 	return l.last
 }
+
+
+
+// t is the amount of tokens to be consumed
+// calculates the elapsed time between last update on tokens field and the date to be compared
+// beware of context bleeding
+func (l *Limiter) generatedTokens(date time.Time) float64 {
+	duration := date.Sub(l.last)
+
+	tokens := duration.Seconds() * l.limit
+	return tokens
+}
+
