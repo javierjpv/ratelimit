@@ -50,15 +50,15 @@ func (l *Limiter) Last() time.Time {
 func (l *Limiter) futureTokens(date time.Time) float64 {
 	// calculates the elapsed time between last update on tokens field and the date to be compared
 	duration := date.Sub(l.last)
-
-	tokens := duration.Seconds() * l.limit+ l.tokens
+	tokens := duration.Seconds()*l.limit + l.tokens
 	return tokens
 }
 
 // t is the amount of tokens to be reserved
-func (l *Limiter) reserveN(t float64) float64 {
-	result := l.futureTokens(time.Now()) - t
-	return result
+func (l *Limiter) reserveN(t float64) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.tokens = l.futureTokens(time.Now()) - t
 }
 
 // t is the amount of pending tokens to be re generated
