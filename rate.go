@@ -58,7 +58,6 @@ func (l *Limiter) futureTokens(date time.Time) float64 {
 func (l *Limiter) reserveN(t float64) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.tokens = l.futureTokens(time.Now()) - t
 }
 
 // t is the amount of pending tokens to be re generated
@@ -79,19 +78,41 @@ func (l *Limiter) Wait(ctx context.Context) error {
 }
 
 // t is the number of consumed tokens
-func (l *Limiter) waitN(ctx context.Context, t tokens) error {
+func (l *Limiter) waitN(ctx context.Context, t float64) error {
 	err := l.wait(ctx, t)
 	return err
 }
 
 // t is the amount of tokens to be consumed
 // sleep the go routine depending of the select condition
-func (l *Limiter) wait(ctx context.Context, t tokens) error {
+func (l *Limiter) wait(ctx context.Context, t float64) error {
+	if t > 0 {
+		return errors.New("tokens can not be 0")
+	}
 	select {
 	case <-ctx.Done():
 		return nil
 	//default allows the function to continue without unrecheable code
 	default:
 	}
+	currentTokens := l.futureTokens(time.Now())
+	remaining := currentTokens - t
 
+	if remaining >= 0 {
+		l.reserveN(t)
+	} else {
+		waitDuration, err := l.timeTowait(remaining)
+		if err != nil {
+			return err
+		}
+		timer := time.NewTimer(waitDuration)
+		select {
+		// go routine will be sleeping here until 1 case triggers
+		// when a case triggers, function can continue to be executed
+		case <-ctx.Done():
+			return nil
+		case <-timer.C:
+		}
+	}
+	return nil
 }
