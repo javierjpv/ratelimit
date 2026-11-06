@@ -51,7 +51,7 @@ func (l *Limiter) futureTokens(date time.Time) float64 {
 	// calculates the elapsed time between last update on tokens field and the date to be compared
 	duration := date.Sub(l.last)
 
-	tokens := duration.Seconds() * l.limit
+	tokens := duration.Seconds() * l.limit+ l.tokens
 	return tokens
 }
 
