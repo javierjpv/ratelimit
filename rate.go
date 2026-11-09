@@ -60,10 +60,10 @@ func (l *Limiter) reserveN(t float64) {
 	defer l.mu.Unlock()
 }
 
-// t is the amount of pending tokens to be re generated
+// t is the amount of pending tokens to be regenerated
 func (l *Limiter) timeTowait(t float64) (tim time.Duration, err error) {
 	if t <= 0 {
-		return 0, errors.New("it can not be 0 or minor")
+		return 0, errors.New("it can not be 0 or negative")
 	}
 	durationF := t / float64(l.limit)
 
@@ -88,6 +88,9 @@ func (l *Limiter) waitN(ctx context.Context, t float64) error {
 func (l *Limiter) wait(ctx context.Context, t float64) error {
 	if t > 0 {
 		return errors.New("tokens can not be 0")
+	}
+	if t>float64(l.burst) {
+		return errors.New("tokens can not be greater than burst")
 	}
 	select {
 	case <-ctx.Done():
