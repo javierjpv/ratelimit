@@ -57,6 +57,9 @@ func (l *Limiter) futureTokens(date time.Time) float64 {
 // t is the amount of tokens to be reserved
 func (l *Limiter) reserveN(t float64) {
 	l.mu.Lock()
+	currentTokens := l.futureTokens(time.Now())
+	remaining := currentTokens - t
+	l.tokens = remaining
 	defer l.mu.Unlock()
 }
 
@@ -89,7 +92,7 @@ func (l *Limiter) wait(ctx context.Context, t float64) error {
 	if t > 0 {
 		return errors.New("tokens can not be 0")
 	}
-	if t>float64(l.burst) {
+	if t > float64(l.burst) {
 		return errors.New("tokens can not be greater than burst")
 	}
 	select {
