@@ -40,7 +40,7 @@ func TestLimiter(t *testing.T) {
 		gotLimiter, err := ratelimiting.NewLimiter(tt.limit, tt.burst)
 
 		if err != nil && !tt.wantError {
-			t.Fatal("not ec¡xpected wantError")
+			t.Fatal("not expected wantError")
 		}
 		if gotLimiter.Limit() != tt.wantLimit {
 			t.Fatal("not expected wantLimit")
