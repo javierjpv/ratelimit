@@ -42,6 +42,9 @@ func TestLimiter(t *testing.T) {
 		if err != nil && !tt.wantError {
 			t.Fatal("not expected wantError")
 		}
+		if err != nil && tt.wantError {
+			continue
+		}
 		if gotLimiter.Limit() != tt.wantLimit {
 			t.Fatal("not expected wantLimit")
 		}
