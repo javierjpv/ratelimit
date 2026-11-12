@@ -11,37 +11,36 @@ func TestLimiter(t *testing.T) {
 		name       string
 		limit      float64
 		burst      int
-		wantNil    bool
 		wantBurst  int
 		wantLimit  float64
 		wantTokens float64
+		wantError  bool
 	}{
 		{
 			name:       "first",
 			limit:      2,
 			burst:      4,
-			wantNil:    false,
 			wantBurst:  4,
 			wantLimit:  2,
 			wantTokens: 4,
+			wantError:  false,
 		},
-		// {name: "second",
-		// 	limit:      2,
-		// 	burst:      4,
-		// 	wantNil:    false,
-		// 	wantBurst:  4,
-		// 	wantLimit:  2,
-		// 	wantTokens: 4,
-		// },
+		{
+			name:       "second",
+			limit:      0,
+			burst:      0,
+			wantBurst:  0,
+			wantLimit:  0,
+			wantTokens: 0,
+			wantError:  true,
+		},
 	}
 
 	for _, tt := range tests {
-		gotLimiter := ratelimiting.NewLimiter(tt.limit, tt.burst)
-		if tt.wantNil && gotLimiter != nil {
-			t.Fatal("not expected wantNil")
-		}
-		if !tt.wantNil && gotLimiter == nil {
-			t.Fatal("not expected wantNil")
+		gotLimiter, err := ratelimiting.NewLimiter(tt.limit, tt.burst)
+
+		if err != nil && !tt.wantError {
+			t.Fatal("not ec¡xpected wantError")
 		}
 		if gotLimiter.Limit() != tt.wantLimit {
 			t.Fatal("not expected wantLimit")
