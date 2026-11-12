@@ -1,8 +1,8 @@
 package ratelimiting_test
 
 import (
-	"_/home/javier/Escritorio/ratelimiting"
 	"testing"
+	ratelimiting "github.com/javierjpv/ratelimit"
 )
 
 func TestLimiter(t *testing.T) {
