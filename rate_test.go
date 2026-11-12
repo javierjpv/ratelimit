@@ -1,8 +1,8 @@
 package ratelimiting_test
 
 import (
-	"testing"
 	ratelimiting "github.com/javierjpv/ratelimit"
+	"testing"
 )
 
 func TestLimiter(t *testing.T) {
@@ -25,6 +25,14 @@ func TestLimiter(t *testing.T) {
 			wantLimit:  2,
 			wantTokens: 4,
 		},
+		// {name: "second",
+		// 	limit:      2,
+		// 	burst:      4,
+		// 	wantNil:    false,
+		// 	wantBurst:  4,
+		// 	wantLimit:  2,
+		// 	wantTokens: 4,
+		// },
 	}
 
 	for _, tt := range tests {

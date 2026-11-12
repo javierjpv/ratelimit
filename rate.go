@@ -17,8 +17,14 @@ type Limiter struct {
 	last   time.Time
 }
 
-func NewLimiter(l float64, b int) *Limiter {
-	return &Limiter{limit: l, burst: b, tokens: float64(b)}
+func NewLimiter(l float64, b int) (*Limiter, error) {
+	if l <= 0 {
+		return nil, errors.New("limit can not be 0 or negative")
+	}
+	if b <= 0 {
+		return nil, errors.New("burst can not be 0 or negative")
+	}
+	return &Limiter{limit: l, burst: b, tokens: float64(b)}, nil
 }
 
 func (l *Limiter) Burst() int {
