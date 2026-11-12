@@ -87,7 +87,7 @@ func (l *Limiter) Wait(ctx context.Context) error {
 }
 
 // t is the number of consumed tokens
-func (l *Limiter) waitN(ctx context.Context, t float64) error {
+func (l *Limiter) WaitN(ctx context.Context, t float64) error {
 	err := l.wait(ctx, t)
 	return err
 }
