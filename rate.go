@@ -25,7 +25,7 @@ func NewLimiter(l float64, b int) (*Limiter, error) {
 	if b <= 0 {
 		return nil, errors.New("burst can not be 0 or negative")
 	}
-	return &Limiter{limit: l, burst: b, tokens: float64(b)}, nil
+	return &Limiter{limit: l, burst: b, tokens: float64(b), last: time.Now()}, nil
 }
 
 func (l *Limiter) Burst() int {
