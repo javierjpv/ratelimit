@@ -3,6 +3,7 @@ package ratelimiting
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -84,7 +85,7 @@ func (l *Limiter) Wait(ctx context.Context) error {
 	return err
 }
 
-// t is the number of consumed tokens
+// t is the number of tokens to be consumed
 func (l *Limiter) WaitN(ctx context.Context, t float64) error {
 	err := l.wait(ctx, t)
 	return err
@@ -93,9 +94,6 @@ func (l *Limiter) WaitN(ctx context.Context, t float64) error {
 // t is the amount of tokens to be consumed
 // sleep the go routine depending of the select condition
 func (l *Limiter) wait(ctx context.Context, t float64) error {
-	if t > 0 {
-		return errors.New("tokens can not be 0")
-	}
 	if t > float64(l.burst) {
 		return errors.New("tokens can not be greater than burst")
 	}
@@ -107,11 +105,12 @@ func (l *Limiter) wait(ctx context.Context, t float64) error {
 	}
 	currentTokens := l.futureTokens(time.Now())
 	remaining := currentTokens - t
-
+	fmt.Println("remaining", remaining)
 	if remaining >= 0 {
 		l.reserve(t)
 	} else {
 		waitDuration, err := l.timeTowait(remaining)
+		fmt.Println("waitDuration", waitDuration)
 		if err != nil {
 			return err
 		}
