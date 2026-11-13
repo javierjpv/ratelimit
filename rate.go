@@ -64,10 +64,9 @@ func (l *Limiter) futureTokens(date time.Time) float64 {
 }
 
 // t is the amount of tokens to be reserved
-func (l *Limiter) reserve(t float64) {
+func (l *Limiter) reserve(t float64, currentTokens float64) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	currentTokens := l.futureTokens(time.Now())
 	remaining := currentTokens - t
 	l.tokens = remaining
 }
@@ -107,12 +106,10 @@ func (l *Limiter) wait(ctx context.Context, t float64) error {
 	}
 	currentTokens := l.futureTokens(time.Now())
 	remaining := currentTokens - t
-	fmt.Println("remaining", remaining)
 	if remaining >= 0 {
-		l.reserve(t)
+		l.reserve(t, currentTokens)
 	} else {
-		waitDuration, err := l.timeTowait(remaining)
-		fmt.Println("waitDuration", waitDuration)
+		waitDuration, err := l.timeTowait(-remaining)
 		if err != nil {
 			return err
 		}
