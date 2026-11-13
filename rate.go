@@ -3,7 +3,6 @@ package ratelimiting
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -69,6 +68,7 @@ func (l *Limiter) reserve(t float64, currentTokens float64) {
 	defer l.mu.Unlock()
 	remaining := currentTokens - t
 	l.tokens = remaining
+	l.last=time.Now()
 }
 
 // t is the amount of pending tokens to be regenerated
