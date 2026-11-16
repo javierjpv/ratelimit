@@ -68,7 +68,7 @@ func (l *Limiter) reserve(t float64, currentTokens float64) {
 	defer l.mu.Unlock()
 	remaining := currentTokens - t
 	l.tokens = remaining
-	l.last=time.Now()
+	l.last = time.Now()
 }
 
 // t is the amount of pending tokens to be regenerated
@@ -123,4 +123,31 @@ func (l *Limiter) wait(ctx context.Context, t float64) error {
 		}
 	}
 	return nil
+}
+
+func (l *Limiter) allow(ctx context.Context, t float64) bool {
+	select {
+	case <-ctx.Done():
+		return false
+
+	default:
+
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := time.Now()
+	result := l.futureTokens(now) - t
+	if result >= 0 {
+		l.tokens = result
+		l.last = now
+		return true
+	}
+	return false
+}
+func (l *Limiter) Allow(ctx context.Context) bool {
+	return l.allow(ctx, 1)
+}
+
+func (l *Limiter) AllowN(ctx context.Context, t float64) bool {
+	return l.allow(ctx, t)
 }
