@@ -2,6 +2,7 @@ package ratelimiting_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"testing"
@@ -93,8 +94,7 @@ func TestWaitN(t *testing.T) {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			var wg sync.WaitGroup
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
+			ctx, _ := context.WithCancel(context.Background())
 			totalRequest := 13
 			for i := 0; i < totalRequest; i++ {
 				go func() {
@@ -118,3 +118,16 @@ func TestWaitN(t *testing.T) {
 	}
 }
 
+func TestWaitNContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	limiter, err := ratelimiting.NewLimiter(2, 4)
+	if err != nil {
+		t.Fatalf("unexpected error creating limiter: %v", err)
+	}
+
+	err = limiter.WaitN(ctx, 1)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("unexpected error at WaitN %v", err)
+	}
+}
