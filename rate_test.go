@@ -3,6 +3,7 @@ package ratelimiting_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"testing/synctest"
 
@@ -91,25 +92,29 @@ func TestWaitN(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-
+			var wg sync.WaitGroup
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-
-			for i := 0; i < 13; i++ {
+			totalRequest := 13
+			for i := 0; i < totalRequest; i++ {
 				go func() {
+					wg.Add(1)
+					defer wg.Done()
 					err := gotLimiter.WaitN(ctx, 1)
 					if err != nil && !tt.wantError {
-						t.Fatalf("unexpected error in WaitN: %v", err)
+						t.Errorf("unexpected error in WaitN: %v", err)
 					}
 				}()
 
 			}
-			//synctest.Wait() allows the test to continue only if the go routine 
+			//synctest.Wait() allows the test to continue only if the go routine
 			//is sleeping waiting for a chan in select
 			synctest.Wait()
 			fmt.Println("El test continua tras tener la go routine dormida esperando que legue un chan en el select")
 
+			wg.Wait()
 		})
 
 	}
 }
+

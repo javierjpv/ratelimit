@@ -53,22 +53,22 @@ func (l *Limiter) Last() time.Time {
 
 // t is the amount of tokens to be consumed
 // beware of context bleeding
+// futureTokens requires l.mu to be held by the caller.
 func (l *Limiter) futureTokens(date time.Time) float64 {
-	l.mu.Lock()
-	defer l.mu.Unlock()
 	// calculates the elapsed time between last update on tokens field and the date to be compared
 	duration := date.Sub(l.last)
 	tokens := duration.Seconds()*l.limit + l.tokens
+	if tokens > float64(l.burst) {
+		tokens = float64(l.burst)
+	}
 	return tokens
 }
 
 // t is the amount of tokens to be reserved
-func (l *Limiter) reserve(t float64, currentTokens float64) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	remaining := currentTokens - t
-	l.tokens = remaining
-	l.last = time.Now()
+// reserve requires l.mu to be held by the caller.
+func (l *Limiter) reserve(t float64, currentTokens float64, currentTime time.Time) {
+	l.tokens = currentTokens - t
+	l.last = currentTime
 }
 
 // t is the amount of pending tokens to be regenerated
@@ -95,43 +95,48 @@ func (l *Limiter) WaitN(ctx context.Context, t float64) error {
 // t is the amount of tokens to be consumed
 // sleep the go routine depending of the select condition
 func (l *Limiter) wait(ctx context.Context, t float64) error {
-	if t > float64(l.burst) {
-		return errors.New("tokens can not be greater than burst")
-	}
 	select {
 	case <-ctx.Done():
-		return nil
+		return ctx.Err()
 	//default allows the function to continue without unrecheable code
 	default:
 	}
-	currentTokens := l.futureTokens(time.Now())
-	remaining := currentTokens - t
-	if remaining >= 0 {
-		l.reserve(t, currentTokens)
-	} else {
-		waitDuration, err := l.timeTowait(-remaining)
-		if err != nil {
-			return err
-		}
-		timer := time.NewTimer(waitDuration)
-		select {
-		// go routine will be sleeping here until 1 case triggers
-		// when a case triggers, function can continue to be executed
-		case <-ctx.Done():
-			return nil
-		case <-timer.C:
-		}
+	l.mu.Lock()
+	if t > float64(l.burst) {
+		l.mu.Unlock()
+		return errors.New("tokens can not be greater than burst")
 	}
+
+	now := time.Now()
+	currentTokens := l.futureTokens(now)
+	remaining := currentTokens - t
+	l.reserve(t, currentTokens, now)
+
+	if remaining >= 0 {
+		l.mu.Unlock()
+		return nil
+	}
+	waitDuration, err := l.timeTowait(-remaining)
+	l.mu.Unlock()
+	if err != nil {
+		return err
+	}
+	timer := time.NewTimer(waitDuration)
+	defer timer.Stop()
+	select {
+	// go routine will be sleeping here until 1 case triggers
+	// when a case triggers, function can continue to be executed
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+	}
+
 	return nil
 }
 
-func (l *Limiter) allow(ctx context.Context, t float64) bool {
-	select {
-	case <-ctx.Done():
-		return false
-
-	default:
-
+func (l *Limiter) allow(t float64) (bool, error) {
+	if t > float64(l.burst) {
+		return false, errors.New("limit can not be greater than burst")
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -140,14 +145,14 @@ func (l *Limiter) allow(ctx context.Context, t float64) bool {
 	if result >= 0 {
 		l.tokens = result
 		l.last = now
-		return true
+		return true, nil
 	}
-	return false
+	return false, nil
 }
-func (l *Limiter) Allow(ctx context.Context) bool {
-	return l.allow(ctx, 1)
+func (l *Limiter) Allow() (bool, error) {
+	return l.allow(1)
 }
 
-func (l *Limiter) AllowN(ctx context.Context, t float64) bool {
-	return l.allow(ctx, t)
+func (l *Limiter) AllowN(t float64) (bool, error) {
+	return l.allow(t)
 }
