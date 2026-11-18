@@ -3,10 +3,10 @@ package ratelimiting_test
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	ratelimiting "github.com/javierjpv/ratelimit"
 )
@@ -89,6 +89,7 @@ func TestWaitN(t *testing.T) {
 
 	for _, tt := range tests {
 		synctest.Test(t, func(t *testing.T) {
+			start := time.Now()
 			gotLimiter, err := ratelimiting.NewLimiter(tt.limit, tt.burst)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -110,9 +111,17 @@ func TestWaitN(t *testing.T) {
 			//synctest.Wait() allows the test to continue only if the go routine
 			//is sleeping waiting for a chan in select
 			synctest.Wait()
-			fmt.Println("El test continua tras tener la go routine dormida esperando que legue un chan en el select")
-
 			wg.Wait()
+
+			// virtual time inside synctest bubble
+			elapsed := time.Since(start)
+
+			expectedSec := float64(totalRequest-tt.burst) / tt.limit
+			expected := time.Duration(expectedSec * float64(time.Second))
+
+			if elapsed != expected {
+				t.Fatalf("[%s] elapsed time => %v, expected time => %v", tt.name, elapsed, expected)
+			}
 		})
 
 	}
