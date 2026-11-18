@@ -161,13 +161,7 @@ type Reservation struct {
 	duration time.Duration
 }
 
-func (l *Limiter) Reserve(ctx context.Context, t float64) (Reservation, error) {
-	select {
-	case <-ctx.Done():
-		return Reservation{duration: 0}, ctx.Err()
-	//default allows the function to continue without unrecheable code
-	default:
-	}
+func (l *Limiter) reserve(t float64) (Reservation, error) {
 	l.mu.Lock()
 	if t > float64(l.burst) {
 		l.mu.Unlock()
@@ -189,4 +183,25 @@ func (l *Limiter) Reserve(ctx context.Context, t float64) (Reservation, error) {
 		return Reservation{duration: 0}, err
 	}
 	return Reservation{duration: waitDuration}, nil
+}
+
+func (l *Limiter) Reserve(ctx context.Context) (Reservation, error) {
+	select {
+	case <-ctx.Done():
+		return Reservation{duration: 0}, ctx.Err()
+	default:
+
+	}
+	reservation, err := l.reserve(1)
+	return reservation, err
+}
+
+func (l *Limiter) ReserveN(ctx context.Context, t float64) (Reservation, error) {
+	select {
+	case <-ctx.Done():
+		return Reservation{duration: 0}, ctx.Err()
+	default:
+	}
+	reservation, err := l.reserve(t)
+	return reservation, err
 }
