@@ -229,3 +229,41 @@ func TestAllowNConcurrent(t *testing.T) {
 		})
 	}
 }
+func TestReserveN(t *testing.T) {
+	tests := []struct {
+		name          string
+		limit         float64
+		burst         int
+		wantError     bool
+		requestTokens float64
+	}{
+		{
+			name:          "cfirst",
+			limit:         2,
+			burst:         4,
+			wantError:     false,
+			requestTokens: 1,
+		},
+		{
+			name:          "second",
+			limit:         2,
+			burst:         4,
+			requestTokens: 20,
+			wantError:     true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotLimiter, err := ratelimiting.NewLimiter(tt.limit, tt.burst)
+			if err != nil {
+				t.Fatalf("not expected error %v", err)
+			}
+			ctx, _ := context.WithCancel(context.Background())
+			_, err = gotLimiter.ReserveN(ctx, tt.requestTokens)
+			if !tt.wantError && err != nil {
+				t.Fatalf("not expected error %v", err)
+			}
+
+		})
+	}
+}
