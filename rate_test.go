@@ -65,7 +65,7 @@ func TestLimiter(t *testing.T) {
 
 }
 
-func TestWaitN(t *testing.T) {
+func TestWaitNConcurrent(t *testing.T) {
 
 	tests := []struct {
 		name      string
