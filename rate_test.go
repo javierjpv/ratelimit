@@ -88,9 +88,11 @@ func TestWaitN(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		//avoiding data race
+		currentTest := tt
 		synctest.Test(t, func(t *testing.T) {
 			start := time.Now()
-			gotLimiter, err := ratelimiting.NewLimiter(tt.limit, tt.burst)
+			gotLimiter, err := ratelimiting.NewLimiter(currentTest.limit, currentTest.burst)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -102,7 +104,7 @@ func TestWaitN(t *testing.T) {
 					wg.Add(1)
 					defer wg.Done()
 					err := gotLimiter.WaitN(ctx, 1)
-					if err != nil && !tt.wantError {
+					if err != nil && !currentTest.wantError {
 						t.Errorf("unexpected error in WaitN: %v", err)
 					}
 				}()
@@ -116,11 +118,11 @@ func TestWaitN(t *testing.T) {
 			// virtual time inside synctest bubble
 			elapsed := time.Since(start)
 
-			expectedSec := float64(totalRequest-tt.burst) / tt.limit
+			expectedSec := float64(totalRequest-currentTest.burst) / currentTest.limit
 			expected := time.Duration(expectedSec * float64(time.Second))
 
 			if elapsed != expected {
-				t.Fatalf("[%s] elapsed time => %v, expected time => %v", tt.name, elapsed, expected)
+				t.Fatalf("[%s] elapsed time => %v, expected time => %v", currentTest.name, elapsed, expected)
 			}
 		})
 
