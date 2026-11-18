@@ -317,3 +317,16 @@ func TestReserveNConcurrent(t *testing.T) {
 		})
 	}
 }
+
+func TestReserveNContext(t *testing.T) {
+	gotLimiter, err := ratelimiting.NewLimiter(2, 4)
+	if err != nil {
+		t.Fatalf("not expected error %v", err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err = gotLimiter.ReserveN(ctx, 1)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("not expected error at TestReserveNContext %v", err)
+	}
+}
