@@ -181,3 +181,49 @@ func TestAllowN(t *testing.T) {
 	}
 }
 
+func TestAllowNConcurrent(t *testing.T) {
+	tests := []struct {
+		name      string
+		limit     float64
+		burst     int
+		wantError bool
+	}{
+		{
+			name:      "first",
+			limit:     2,
+			burst:     4,
+			wantError: false,
+		},
+		{
+			name:      "second",
+			limit:     2,
+			burst:     6,
+			wantError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		//avoiding data race
+		currentTest := tt
+		t.Run(currentTest.name, func(t *testing.T) {
+			lim, err := ratelimiting.NewLimiter(currentTest.limit, currentTest.burst)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			var wg sync.WaitGroup
+			totalRequests := 40
+			for i := 0; i < totalRequests; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					_, err := lim.AllowN(1)
+					if !currentTest.wantError && err != nil {
+						t.Errorf("unexpected error in AllowN: %v", err)
+					}
+				}()
+
+			}
+			wg.Wait()
+		})
+	}
+}
