@@ -65,8 +65,8 @@ func (l *Limiter) futureTokens(date time.Time) float64 {
 }
 
 // t is the amount of tokens to be reserved
-// reserve requires l.mu to be held by the caller.
-func (l *Limiter) reserve(t float64, currentTokens float64, currentTime time.Time) {
+// updateTokens requires l.mu to be held by the caller.
+func (l *Limiter) updateTokens(t float64, currentTokens float64, currentTime time.Time) {
 	l.tokens = currentTokens - t
 	l.last = currentTime
 }
@@ -110,7 +110,7 @@ func (l *Limiter) wait(ctx context.Context, t float64) error {
 	now := time.Now()
 	currentTokens := l.futureTokens(now)
 	remaining := currentTokens - t
-	l.reserve(t, currentTokens, now)
+	l.updateTokens(t, currentTokens, now)
 
 	if remaining >= 0 {
 		l.mu.Unlock()
@@ -155,4 +155,38 @@ func (l *Limiter) Allow() (bool, error) {
 
 func (l *Limiter) AllowN(t float64) (bool, error) {
 	return l.allow(t)
+}
+
+type Reservation struct {
+	duration time.Duration
+}
+
+func (l *Limiter) Reserve(ctx context.Context, t float64) (Reservation, error) {
+	select {
+	case <-ctx.Done():
+		return Reservation{duration: 0}, ctx.Err()
+	//default allows the function to continue without unrecheable code
+	default:
+	}
+	l.mu.Lock()
+	if t > float64(l.burst) {
+		l.mu.Unlock()
+		return Reservation{duration: 0}, errors.New("tokens can not be greater than burst")
+	}
+
+	now := time.Now()
+	currentTokens := l.futureTokens(now)
+	remaining := currentTokens - t
+	l.updateTokens(t, currentTokens, now)
+
+	if remaining >= 0 {
+		l.mu.Unlock()
+		return Reservation{duration: 0}, nil
+	}
+	waitDuration, err := l.timeTowait(-remaining)
+	l.mu.Unlock()
+	if err != nil {
+		return Reservation{duration: 0}, err
+	}
+	return Reservation{duration: waitDuration}, nil
 }
