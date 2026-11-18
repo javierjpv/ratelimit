@@ -100,8 +100,8 @@ func TestWaitNConcurrent(t *testing.T) {
 			ctx, _ := context.WithCancel(context.Background())
 			totalRequest := 13
 			for i := 0; i < totalRequest; i++ {
+				wg.Add(1)
 				go func() {
-					wg.Add(1)
 					defer wg.Done()
 					err := gotLimiter.WaitN(ctx, 1)
 					if err != nil && !currentTest.wantError {
@@ -264,6 +264,56 @@ func TestReserveN(t *testing.T) {
 				t.Fatalf("not expected error %v", err)
 			}
 
+		})
+	}
+}
+
+func TestReserveNConcurrent(t *testing.T) {
+	tests := []struct {
+		name          string
+		limit         float64
+		burst         int
+		wantError     bool
+		requestTokens float64
+	}{
+		{
+			name:          "cfirst",
+			limit:         2,
+			burst:         4,
+			requestTokens: 1,
+			wantError:     false,
+		},
+		{
+			name:          "second",
+			limit:         2,
+			burst:         4,
+			requestTokens: 1,
+			wantError:     true,
+		},
+	}
+	for _, tt := range tests {
+		currentTest := tt
+		synctest.Test(t, func(t *testing.T) {
+			gotLimiter, err := ratelimiting.NewLimiter(currentTest.limit, currentTest.burst)
+			if err != nil {
+				t.Fatalf("not expected error %v", err)
+			}
+			var wg sync.WaitGroup
+			ctx, _ := context.WithCancel(context.Background())
+			totalRequests := 70
+			for i := 0; i < totalRequests; i++ {
+				wg.Add(1)
+
+				go func() {
+					defer wg.Done()
+					_, err := gotLimiter.ReserveN(ctx, currentTest.requestTokens)
+					if !currentTest.wantError && err != nil {
+						t.Errorf("not expected error %v", err)
+					}
+				}()
+			}
+			synctest.Wait()
+			wg.Wait()
 		})
 	}
 }
