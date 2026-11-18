@@ -140,3 +140,44 @@ func TestWaitNContext(t *testing.T) {
 		t.Fatalf("unexpected error at WaitN %v", err)
 	}
 }
+
+func TestAllowN(t *testing.T) {
+	tests := []struct {
+		name          string
+		limit         float64
+		burst         int
+		wantError     bool
+		requestTokens float64
+	}{
+		{
+			name:          "cfirst",
+			limit:         2,
+			burst:         4,
+			wantError:     false,
+			requestTokens: 1,
+		},
+		{
+			name:          "second",
+			limit:         2,
+			burst:         4,
+			requestTokens: 20,
+			wantError:     true,
+		},
+	}
+
+	for _, tt := range tests {
+
+		t.Run(tt.name, func(t *testing.T) {
+			lim, err := ratelimiting.NewLimiter(tt.limit, tt.burst)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			_, err = lim.AllowN(tt.requestTokens)
+			if !tt.wantError && err != nil {
+				t.Fatalf("unexpected error in AllowN: %v", err)
+			}
+
+		})
+	}
+}
+
